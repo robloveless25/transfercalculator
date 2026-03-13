@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Transfer Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 14px; }
+    h2 { margin-top: 0; }
+
+    label { display: block; margin: 10px 0; }
+    button, input { padding: 8px; font-size: 14px; }
+
+    .appHeader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 0 6px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    .appHeader img {
+      max-width: 520px;
+      width: 100%;
+      height: auto;
+    }
+
+    .searchRow { display: grid; gap: 6px; }
+    .searchRow input { width: 100%; box-sizing: border-box; }
+
+    /* Time Critical checkbox row */
+    .timeCriticalRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 0 10px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #f4f4f4;
+      border: 2px solid #ccc;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
+      user-select: none;
+    }
+    .timeCriticalRow.active {
+      background: #fff3f3;
+      border-color: #e6223d;
+    }
+    .timeCriticalRow input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #e6223d;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .timeCriticalRow span {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .resultBox {
+      margin-top: 15px;
+      padding: 15px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      border-radius: 10px;
+      min-height: 28px;
+      background: #e9e9e9;
+      color: #222;
+    }
+
+    .assumptions {
+      margin-top: 10px;
+      font-style: italic;
+      color: #333;
+      max-width: 820px;
+      line-height: 1.35;
+    }
+
+    .etaBox {
+      margin-top: 12px;
+      padding: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      border-radius: 10px;
+      background: #fff;
+      color: #000;
+      border: 2px solid #000;
+      min-height: 24px;
+    }
+
+    .jobCycleBox {
+      margin-top: 12px;
+      padding: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      border-radius: 10px;
+      background: #fff;
+      color: #000;
+      border: 2px solid #000;
+      min-height: 24px;
+    }
+
+    .handoverNote {
+      margin-top: 8px;
+      font-style: italic;
+      color: #333;
+      max-width: 820px;
+      line-height: 1.35;
+    }
+
+    .backOnBaseBox {
+      margin-top: 12px;
+      padding: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      border-radius: 10px;
+      min-height: 24px;
+      background: #e9e9e9;
+      color: #222;
+    }
+
+    .hemsAlert {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 10px;
+      background: #e6223d;
+      border: 3px solid #00bfbf;
+      color: white;
+      font-weight: 700;
+      line-height: 1.35;
+      display: none;
+    }
+
+    .calcBtn {
+      margin-top: 4px;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      background: #86C2BD;
+      cursor: pointer;
+    }
+    .calcBtn:hover { filter: brightness(0.95); }
+  </style>
+</head>
+<body>
+
+<div class="appHeader">
+  <img
+    src="https://www.arccksstransferservice.nhs.uk/base-install/images/main-logo/company-logo.png"
+    alt="ARCC KSS logo"
+  />
+</div>
+
+<h2>Transfer Calculator</h2>
+
+<label class="searchRow">
+  Team:
+  <input id="teamInput" list="teamList" placeholder="Type to search (West/East)" />
+  <datalist id="teamList">
+    <option value="West"></option>
+    <option value="East"></option>
+  </datalist>
+</label>
+
+<label class="searchRow">
+  Starting Location:
+  <input id="startingLocationInput" list="startingLocationList" placeholder="Type to search..." />
+  <datalist id="startingLocationList"></datalist>
+</label>
+
+<label class="searchRow">
+  Referring Hospital:
+  <input id="referringInput" list="referringList" placeholder="Type to search..." />
+  <datalist id="referringList"></datalist>
+</label>
+
+<label class="searchRow">
+  Receiving Hospital:
+  <input id="receivingInput" list="receivingList" placeholder="Type to search..." />
+  <datalist id="receivingList"></datalist>
+</label>
+
+<!-- Time Critical toggle -->
+<div class="timeCriticalRow" id="timeCriticalRow" onclick="toggleTimeCritical()">
+  <input type="checkbox" id="timeCriticalCheck" onclick="event.stopPropagation(); toggleTimeCritical()" />
+  <span>Time Critical</span>
+</div>
+
+<button class="calcBtn" type="button" onclick="calculate()">Calculate Journey Time</button>
+
+<div id="etaReferring" class="etaBox" style="display:none;"></div>
+<div id="result" class="resultBox">Time to Receiving Hospital</div>
+<div id="etaReceiving" class="etaBox" style="display:none;"></div>
+<div id="assumptions" class="assumptions" style="display:none;"></div>
+<div id="jobCycleResult" class="jobCycleBox" style="display:none;"></div>
+<div id="handoverNote" class="handoverNote" style="display:none;"></div>
+<div id="backOnBaseResult" class="backOnBaseBox" style="display:none;"></div>
+<div id="hemsAlert" class="hemsAlert"></div>
+
+<script>
+/* =========================
+   TIME CRITICAL TOGGLE
+   ========================= */
+function toggleTimeCritical() {
+  const cb = document.getElementById("timeCriticalCheck");
+  const row = document.getElementById("timeCriticalRow");
+  cb.checked = !cb.checked;
+  row.classList.toggle("active", cb.checked);
+}
+
+/* =========================
+   TRANSFER TIMES (minutes)
+   ========================= */
+const rawTransfers = `
+Crawley Hospital|Crawley Hospital|0
+Crawley Hospital|East Surrey Hospital|22
+Crawley Hospital|Royal Surrey County Hospital|44
+Crawley Hospital|Frimley Park Hospital|56
+Crawley Hospital|St Peter's Hospital|39
+Crawley Hospital|Darent Valley Hospital|44
+Crawley Hospital|Medway Maritime Hospital|61
+Crawley Hospital|Maidstone Hospital|48
+Crawley Hospital|Tunbridge Wells Hospital|43
+Crawley Hospital|William Harvey Hospital|66
+Crawley Hospital|Kent & Canterbury Hospital|79
+Crawley Hospital|QEQM Hospital|98
+Crawley Hospital|Eastbourne District General Hospital|56
+Crawley Hospital|Conquest Hospital|81
+Crawley Hospital|Worthing Hospital|42
+Crawley Hospital|St Richard's Hospital|61
+Crawley Hospital|Princess Royal Hospital|27
+Crawley Hospital|Royal Sussex County Hospital|41
+Crawley Hospital|Queen Victoria Hospital|25
+Crawley Hospital|St George's Hospital|57
+Crawley Hospital|St Thomas' Hospital|87
+Crawley Hospital|King's College Hospital|72
+Crawley Hospital|UCLH|94
+East Surrey Hospital|Crawley Hospital|22
+East Surrey Hospital|East Surrey Hospital|0
+East Surrey Hospital|Royal Surrey County Hospital|38
+East Surrey Hospital|Frimley Park Hospital|50
+East Surrey Hospital|St Peter's Hospital|33
+East Surrey Hospital|Darent Valley Hospital|45
+East Surrey Hospital|Medway Maritime Hospital|63
+East Surrey Hospital|Maidstone Hospital|49
+East Surrey Hospital|Tunbridge Wells Hospital|44
+East Surrey Hospital|William Harvey Hospital|67
+East Surrey Hospital|Kent & Canterbury Hospital|80
+East Surrey Hospital|QEQM Hospital|99
+East Surrey Hospital|Eastbourne District General Hospital|70
+East Surrey Hospital|Conquest Hospital|83
+East Surrey Hospital|Worthing Hospital|56
+East Surrey Hospital|St Richard's Hospital|77
+East Surrey Hospital|Princess Royal Hospital|38
+East Surrey Hospital|Royal Sussex County Hospital|55
+East Surrey Hospital|Queen Victoria Hospital|30
+East Surrey Hospital|St George's Hospital|52
+East Surrey Hospital|St Thomas' Hospital|80
+East Surrey Hospital|King's College Hospital|70
+East Surrey Hospital|UCLH|91
+Royal Surrey County Hospital|Crawley Hospital|45
+Royal Surrey County Hospital|East Surrey Hospital|39
+Royal Surrey County Hospital|Royal Surrey County Hospital|0
+Royal Surrey County Hospital|Frimley Park Hospital|21
+Royal Surrey County Hospital|St Peter's Hospital|19
+Royal Surrey County Hospital|Darent Valley Hospital|56
+Royal Surrey County Hospital|Medway Maritime Hospital|74
+Royal Surrey County Hospital|Maidstone Hospital|60
+Royal Surrey County Hospital|Tunbridge Wells Hospital|55
+Royal Surrey County Hospital|William Harvey Hospital|78
+Royal Surrey County Hospital|Kent & Canterbury Hospital|91
+Royal Surrey County Hospital|QEQM Hospital|111
+Royal Surrey County Hospital|Eastbourne District General Hospital|91
+Royal Surrey County Hospital|Conquest Hospital|94
+Royal Surrey County Hospital|Worthing Hospital|71
+Royal Surrey County Hospital|St Richard's Hospital|55
+Royal Surrey County Hospital|Princess Royal Hospital|59
+Royal Surrey County Hospital|Royal Sussex County Hospital|75
+Royal Surrey County Hospital|Queen Victoria Hospital|54
+Royal Surrey County Hospital|St George's Hospital|43
+Royal Surrey County Hospital|St Thomas' Hospital|67
+Royal Surrey County Hospital|King's College Hospital|68
+Royal Surrey County Hospital|UCLH|77
+Frimley Park Hospital|Crawley Hospital|56
+Frimley Park Hospital|East Surrey Hospital|50
+Frimley Park Hospital|Royal Surrey County Hospital|21
+Frimley Park Hospital|Frimley Park Hospital|0
+Frimley Park Hospital|St Peter's Hospital|19
+Frimley Park Hospital|Darent Valley Hospital|67
+Frimley Park Hospital|Medway Maritime Hospital|85
+Frimley Park Hospital|Maidstone Hospital|71
+Frimley Park Hospital|Tunbridge Wells Hospital|66
+Frimley Park Hospital|William Harvey Hospital|89
+Frimley Park Hospital|Kent & Canterbury Hospital|102
+Frimley Park Hospital|QEQM Hospital|122
+Frimley Park Hospital|Eastbourne District General Hospital|102
+Frimley Park Hospital|Conquest Hospital|105
+Frimley Park Hospital|Worthing Hospital|87
+Frimley Park Hospital|St Richard's Hospital|69
+Frimley Park Hospital|Princess Royal Hospital|70
+Frimley Park Hospital|Royal Sussex County Hospital|86
+Frimley Park Hospital|Queen Victoria Hospital|65
+Frimley Park Hospital|St George's Hospital|56
+Frimley Park Hospital|St Thomas' Hospital|71
+Frimley Park Hospital|King's College Hospital|81
+Frimley Park Hospital|UCLH|74
+St Peter's Hospital|Crawley Hospital|41
+St Peter's Hospital|East Surrey Hospital|35
+St Peter's Hospital|Royal Surrey County Hospital|22
+St Peter's Hospital|Frimley Park Hospital|19
+St Peter's Hospital|St Peter's Hospital|0
+St Peter's Hospital|Darent Valley Hospital|52
+St Peter's Hospital|Medway Maritime Hospital|70
+St Peter's Hospital|Maidstone Hospital|56
+St Peter's Hospital|Tunbridge Wells Hospital|51
+St Peter's Hospital|William Harvey Hospital|74
+St Peter's Hospital|Kent & Canterbury Hospital|87
+St Peter's Hospital|QEQM Hospital|106
+St Peter's Hospital|Eastbourne District General Hospital|86
+St Peter's Hospital|Conquest Hospital|90
+St Peter's Hospital|Worthing Hospital|72
+St Peter's Hospital|St Richard's Hospital|73
+St Peter's Hospital|Princess Royal Hospital|54
+St Peter's Hospital|Royal Sussex County Hospital|71
+St Peter's Hospital|Queen Victoria Hospital|50
+St Peter's Hospital|St George's Hospital|41
+St Peter's Hospital|St Thomas' Hospital|60
+St Peter's Hospital|King's College Hospital|66
+St Peter's Hospital|UCLH|63
+Darent Valley Hospital|Crawley Hospital|43
+Darent Valley Hospital|East Surrey Hospital|44
+Darent Valley Hospital|Royal Surrey County Hospital|55
+Darent Valley Hospital|Frimley Park Hospital|67
+Darent Valley Hospital|St Peter's Hospital|51
+Darent Valley Hospital|Darent Valley Hospital|0
+Darent Valley Hospital|Medway Maritime Hospital|25
+Darent Valley Hospital|Maidstone Hospital|28
+Darent Valley Hospital|Tunbridge Wells Hospital|29
+Darent Valley Hospital|William Harvey Hospital|43
+Darent Valley Hospital|Kent & Canterbury Hospital|48
+Darent Valley Hospital|QEQM Hospital|67
+Darent Valley Hospital|Eastbourne District General Hospital|83
+Darent Valley Hospital|Conquest Hospital|68
+Darent Valley Hospital|Worthing Hospital|75
+Darent Valley Hospital|St Richard's Hospital|96
+Darent Valley Hospital|Princess Royal Hospital|57
+Darent Valley Hospital|Royal Sussex County Hospital|74
+Darent Valley Hospital|Queen Victoria Hospital|47
+Darent Valley Hospital|St George's Hospital|67
+Darent Valley Hospital|St Thomas' Hospital|52
+Darent Valley Hospital|King's College Hospital|48
+Darent Valley Hospital|UCLH|61
+Medway Maritime Hospital|Crawley Hospital|63
+Medway Maritime Hospital|East Surrey Hospital|64
+Medway Maritime Hospital|Royal Surrey County Hospital|75
+Medway Maritime Hospital|Frimley Park Hospital|87
+Medway Maritime Hospital|St Peter's Hospital|70
+Medway Maritime Hospital|Darent Valley Hospital|25
+Medway Maritime Hospital|Medway Maritime Hospital|0
+Medway Maritime Hospital|Maidstone Hospital|28
+Medway Maritime Hospital|Tunbridge Wells Hospital|49
+Medway Maritime Hospital|William Harvey Hospital|43
+Medway Maritime Hospital|Kent & Canterbury Hospital|46
+Medway Maritime Hospital|QEQM Hospital|65
+Medway Maritime Hospital|Eastbourne District General Hospital|102
+Medway Maritime Hospital|Conquest Hospital|84
+Medway Maritime Hospital|Worthing Hospital|95
+Medway Maritime Hospital|St Richard's Hospital|116
+Medway Maritime Hospital|Princess Royal Hospital|77
+Medway Maritime Hospital|Royal Sussex County Hospital|93
+Medway Maritime Hospital|Queen Victoria Hospital|66
+Medway Maritime Hospital|St George's Hospital|87
+Medway Maritime Hospital|St Thomas' Hospital|71
+Medway Maritime Hospital|King's College Hospital|67
+Medway Maritime Hospital|UCLH|80
+Maidstone Hospital|Crawley Hospital|47
+Maidstone Hospital|East Surrey Hospital|48
+Maidstone Hospital|Royal Surrey County Hospital|59
+Maidstone Hospital|Frimley Park Hospital|71
+Maidstone Hospital|St Peter's Hospital|55
+Maidstone Hospital|Darent Valley Hospital|27
+Maidstone Hospital|Medway Maritime Hospital|24
+Maidstone Hospital|Maidstone Hospital|0
+Maidstone Hospital|Tunbridge Wells Hospital|25
+Maidstone Hospital|William Harvey Hospital|28
+Maidstone Hospital|Kent & Canterbury Hospital|42
+Maidstone Hospital|QEQM Hospital|61
+Maidstone Hospital|Eastbourne District General Hospital|78
+Maidstone Hospital|Conquest Hospital|64
+Maidstone Hospital|Worthing Hospital|79
+Maidstone Hospital|St Richard's Hospital|100
+Maidstone Hospital|Princess Royal Hospital|61
+Maidstone Hospital|Royal Sussex County Hospital|78
+Maidstone Hospital|Queen Victoria Hospital|51
+Maidstone Hospital|St George's Hospital|72
+Maidstone Hospital|St Thomas' Hospital|71
+Maidstone Hospital|King's College Hospital|66
+Maidstone Hospital|UCLH|80
+Tunbridge Wells Hospital|Crawley Hospital|42
+Tunbridge Wells Hospital|East Surrey Hospital|43
+Tunbridge Wells Hospital|Royal Surrey County Hospital|54
+Tunbridge Wells Hospital|Frimley Park Hospital|66
+Tunbridge Wells Hospital|St Peter's Hospital|49
+Tunbridge Wells Hospital|Darent Valley Hospital|30
+Tunbridge Wells Hospital|Medway Maritime Hospital|48
+Tunbridge Wells Hospital|Maidstone Hospital|26
+Tunbridge Wells Hospital|Tunbridge Wells Hospital|0
+Tunbridge Wells Hospital|William Harvey Hospital|52
+Tunbridge Wells Hospital|Kent & Canterbury Hospital|65
+Tunbridge Wells Hospital|QEQM Hospital|85
+Tunbridge Wells Hospital|Eastbourne District General Hospital|56
+Tunbridge Wells Hospital|Conquest Hospital|41
+Tunbridge Wells Hospital|Worthing Hospital|74
+Tunbridge Wells Hospital|St Richard's Hospital|95
+Tunbridge Wells Hospital|Princess Royal Hospital|51
+Tunbridge Wells Hospital|Royal Sussex County Hospital|70
+Tunbridge Wells Hospital|Queen Victoria Hospital|30
+Tunbridge Wells Hospital|St George's Hospital|67
+Tunbridge Wells Hospital|St Thomas' Hospital|72
+Tunbridge Wells Hospital|King's College Hospital|68
+Tunbridge Wells Hospital|UCLH|81
+William Harvey Hospital|Crawley Hospital|67
+William Harvey Hospital|East Surrey Hospital|68
+William Harvey Hospital|Royal Surrey County Hospital|79
+William Harvey Hospital|Frimley Park Hospital|91
+William Harvey Hospital|St Peter's Hospital|75
+William Harvey Hospital|Darent Valley Hospital|45
+William Harvey Hospital|Medway Maritime Hospital|42
+William Harvey Hospital|Maidstone Hospital|29
+William Harvey Hospital|Tunbridge Wells Hospital|53
+William Harvey Hospital|William Harvey Hospital|0
+William Harvey Hospital|Kent & Canterbury Hospital|29
+William Harvey Hospital|QEQM Hospital|57
+William Harvey Hospital|Eastbourne District General Hospital|85
+William Harvey Hospital|Conquest Hospital|50
+William Harvey Hospital|Worthing Hospital|99
+William Harvey Hospital|St Richard's Hospital|120
+William Harvey Hospital|Princess Royal Hospital|81
+William Harvey Hospital|Royal Sussex County Hospital|98
+William Harvey Hospital|Queen Victoria Hospital|71
+William Harvey Hospital|St George's Hospital|92
+William Harvey Hospital|St Thomas' Hospital|91
+William Harvey Hospital|King's College Hospital|86
+William Harvey Hospital|UCLH|99
+Kent & Canterbury Hospital|Crawley Hospital|79
+Kent & Canterbury Hospital|East Surrey Hospital|80
+Kent & Canterbury Hospital|Royal Surrey County Hospital|91
+Kent & Canterbury Hospital|Frimley Park Hospital|102
+Kent & Canterbury Hospital|St Peter's Hospital|87
+Kent & Canterbury Hospital|Darent Valley Hospital|48
+Kent & Canterbury Hospital|Medway Maritime Hospital|46
+Kent & Canterbury Hospital|Maidstone Hospital|42
+Kent & Canterbury Hospital|Tunbridge Wells Hospital|65
+Kent & Canterbury Hospital|William Harvey Hospital|29
+Kent & Canterbury Hospital|Kent & Canterbury Hospital|0
+Kent & Canterbury Hospital|QEQM Hospital|41
+Kent & Canterbury Hospital|Eastbourne District General Hospital|112
+Kent & Canterbury Hospital|Conquest Hospital|77
+Kent & Canterbury Hospital|Worthing Hospital|111
+Kent & Canterbury Hospital|St Richard's Hospital|132
+Kent & Canterbury Hospital|Princess Royal Hospital|93
+Kent & Canterbury Hospital|Royal Sussex County Hospital|110
+Kent & Canterbury Hospital|Queen Victoria Hospital|83
+Kent & Canterbury Hospital|St George's Hospital|104
+Kent & Canterbury Hospital|St Thomas' Hospital|95
+Kent & Canterbury Hospital|King's College Hospital|90
+Kent & Canterbury Hospital|UCLH|103
+QEQM Hospital|Crawley Hospital|98
+QEQM Hospital|East Surrey Hospital|99
+QEQM Hospital|Royal Surrey County Hospital|111
+QEQM Hospital|Frimley Park Hospital|122
+QEQM Hospital|St Peter's Hospital|106
+QEQM Hospital|Darent Valley Hospital|67
+QEQM Hospital|Medway Maritime Hospital|65
+QEQM Hospital|Maidstone Hospital|61
+QEQM Hospital|Tunbridge Wells Hospital|85
+QEQM Hospital|William Harvey Hospital|57
+QEQM Hospital|Kent & Canterbury Hospital|41
+QEQM Hospital|QEQM Hospital|0
+QEQM Hospital|Eastbourne District General Hospital|131
+QEQM Hospital|Conquest Hospital|105
+QEQM Hospital|Worthing Hospital|129
+QEQM Hospital|St Richard's Hospital|150
+QEQM Hospital|Princess Royal Hospital|111
+QEQM Hospital|Royal Sussex County Hospital|128
+QEQM Hospital|Queen Victoria Hospital|101
+QEQM Hospital|St George's Hospital|123
+QEQM Hospital|St Thomas' Hospital|113
+QEQM Hospital|King's College Hospital|109
+QEQM Hospital|UCLH|121
+Eastbourne District General Hospital|Crawley Hospital|56
+Eastbourne District General Hospital|East Surrey Hospital|70
+Eastbourne District General Hospital|Royal Surrey County Hospital|91
+Eastbourne District General Hospital|Frimley Park Hospital|102
+Eastbourne District General Hospital|St Peter's Hospital|86
+Eastbourne District General Hospital|Darent Valley Hospital|83
+Eastbourne District General Hospital|Medway Maritime Hospital|102
+Eastbourne District General Hospital|Maidstone Hospital|78
+Eastbourne District General Hospital|Tunbridge Wells Hospital|56
+Eastbourne District General Hospital|William Harvey Hospital|85
+Eastbourne District General Hospital|Kent & Canterbury Hospital|112
+Eastbourne District General Hospital|QEQM Hospital|131
+Eastbourne District General Hospital|Eastbourne District General Hospital|0
+Eastbourne District General Hospital|Conquest Hospital|35
+Eastbourne District General Hospital|Worthing Hospital|49
+Eastbourne District General Hospital|St Richard's Hospital|75
+Eastbourne District General Hospital|Princess Royal Hospital|47
+Eastbourne District General Hospital|Royal Sussex County Hospital|42
+Eastbourne District General Hospital|Queen Victoria Hospital|54
+Eastbourne District General Hospital|St George's Hospital|102
+Eastbourne District General Hospital|St Thomas' Hospital|124
+Eastbourne District General Hospital|King's College Hospital|118
+Eastbourne District General Hospital|UCLH|133
+Conquest Hospital|Crawley Hospital|81
+Conquest Hospital|East Surrey Hospital|83
+Conquest Hospital|Royal Surrey County Hospital|94
+Conquest Hospital|Frimley Park Hospital|105
+Conquest Hospital|St Peter's Hospital|90
+Conquest Hospital|Darent Valley Hospital|68
+Conquest Hospital|Medway Maritime Hospital|84
+Conquest Hospital|Maidstone Hospital|64
+Conquest Hospital|Tunbridge Wells Hospital|41
+Conquest Hospital|William Harvey Hospital|50
+Conquest Hospital|Kent & Canterbury Hospital|77
+Conquest Hospital|QEQM Hospital|105
+Conquest Hospital|Eastbourne District General Hospital|35
+Conquest Hospital|Conquest Hospital|0
+Conquest Hospital|Worthing Hospital|74
+Conquest Hospital|St Richard's Hospital|100
+Conquest Hospital|Princess Royal Hospital|66
+Conquest Hospital|Royal Sussex County Hospital|67
+Conquest Hospital|Queen Victoria Hospital|65
+Conquest Hospital|St George's Hospital|106
+Conquest Hospital|St Thomas' Hospital|111
+Conquest Hospital|King's College Hospital|107
+Conquest Hospital|UCLH|119
+Worthing Hospital|Crawley Hospital|42
+Worthing Hospital|East Surrey Hospital|56
+Worthing Hospital|Royal Surrey County Hospital|71
+Worthing Hospital|Frimley Park Hospital|87
+Worthing Hospital|St Peter's Hospital|72
+Worthing Hospital|Darent Valley Hospital|75
+Worthing Hospital|Medway Maritime Hospital|95
+Worthing Hospital|Maidstone Hospital|79
+Worthing Hospital|Tunbridge Wells Hospital|74
+Worthing Hospital|William Harvey Hospital|99
+Worthing Hospital|Kent & Canterbury Hospital|111
+Worthing Hospital|QEQM Hospital|129
+Worthing Hospital|Eastbourne District General Hospital|49
+Worthing Hospital|Conquest Hospital|74
+Worthing Hospital|Worthing Hospital|0
+Worthing Hospital|St Richard's Hospital|34
+Worthing Hospital|Princess Royal Hospital|36
+Worthing Hospital|Royal Sussex County Hospital|36
+Worthing Hospital|Queen Victoria Hospital|57
+Worthing Hospital|St George's Hospital|87
+Worthing Hospital|St Thomas' Hospital|118
+Worthing Hospital|King's College Hospital|103
+Worthing Hospital|UCLH|125
+St Richard's Hospital|Crawley Hospital|61
+St Richard's Hospital|East Surrey Hospital|77
+St Richard's Hospital|Royal Surrey County Hospital|55
+St Richard's Hospital|Frimley Park Hospital|69
+St Richard's Hospital|St Peter's Hospital|73
+St Richard's Hospital|Darent Valley Hospital|96
+St Richard's Hospital|Medway Maritime Hospital|116
+St Richard's Hospital|Maidstone Hospital|100
+St Richard's Hospital|Tunbridge Wells Hospital|95
+St Richard's Hospital|William Harvey Hospital|120
+St Richard's Hospital|Kent & Canterbury Hospital|132
+St Richard's Hospital|QEQM Hospital|150
+St Richard's Hospital|Eastbourne District General Hospital|75
+St Richard's Hospital|Conquest Hospital|100
+St Richard's Hospital|Worthing Hospital|34
+St Richard's Hospital|St Richard's Hospital|0
+St Richard's Hospital|Princess Royal Hospital|60
+St Richard's Hospital|Royal Sussex County Hospital|59
+St Richard's Hospital|Queen Victoria Hospital|78
+St Richard's Hospital|St George's Hospital|97
+St Richard's Hospital|St Thomas' Hospital|121
+St Richard's Hospital|King's College Hospital|122
+St Richard's Hospital|UCLH|131
+Princess Royal Hospital|Crawley Hospital|27
+Princess Royal Hospital|East Surrey Hospital|38
+Princess Royal Hospital|Royal Surrey County Hospital|59
+Princess Royal Hospital|Frimley Park Hospital|70
+Princess Royal Hospital|St Peter's Hospital|54
+Princess Royal Hospital|Darent Valley Hospital|57
+Princess Royal Hospital|Medway Maritime Hospital|77
+Princess Royal Hospital|Maidstone Hospital|61
+Princess Royal Hospital|Tunbridge Wells Hospital|51
+Princess Royal Hospital|William Harvey Hospital|81
+Princess Royal Hospital|Kent & Canterbury Hospital|93
+Princess Royal Hospital|QEQM Hospital|111
+Princess Royal Hospital|Eastbourne District General Hospital|47
+Princess Royal Hospital|Conquest Hospital|66
+Princess Royal Hospital|Worthing Hospital|36
+Princess Royal Hospital|St Richard's Hospital|60
+Princess Royal Hospital|Princess Royal Hospital|0
+Princess Royal Hospital|Royal Sussex County Hospital|35
+Princess Royal Hospital|Queen Victoria Hospital|28
+Princess Royal Hospital|St George's Hospital|73
+Princess Royal Hospital|St Thomas' Hospital|103
+Princess Royal Hospital|King's College Hospital|88
+Princess Royal Hospital|UCLH|110
+Royal Sussex County Hospital|Crawley Hospital|41
+Royal Sussex County Hospital|East Surrey Hospital|55
+Royal Sussex County Hospital|Royal Surrey County Hospital|75
+Royal Sussex County Hospital|Frimley Park Hospital|86
+Royal Sussex County Hospital|St Peter's Hospital|71
+Royal Sussex County Hospital|Darent Valley Hospital|74
+Royal Sussex County Hospital|Medway Maritime Hospital|93
+Royal Sussex County Hospital|Maidstone Hospital|78
+Royal Sussex County Hospital|Tunbridge Wells Hospital|70
+Royal Sussex County Hospital|William Harvey Hospital|98
+Royal Sussex County Hospital|Kent & Canterbury Hospital|110
+Royal Sussex County Hospital|QEQM Hospital|128
+Royal Sussex County Hospital|Eastbourne District General Hospital|42
+Royal Sussex County Hospital|Conquest Hospital|67
+Royal Sussex County Hospital|Worthing Hospital|36
+Royal Sussex County Hospital|St Richard's Hospital|59
+Royal Sussex County Hospital|Princess Royal Hospital|35
+Royal Sussex County Hospital|Royal Sussex County Hospital|0
+Royal Sussex County Hospital|Queen Victoria Hospital|58
+Royal Sussex County Hospital|St George's Hospital|89
+Royal Sussex County Hospital|St Thomas' Hospital|119
+Royal Sussex County Hospital|King's College Hospital|104
+Royal Sussex County Hospital|UCLH|126
+Queen Victoria Hospital|Crawley Hospital|25
+Queen Victoria Hospital|East Surrey Hospital|30
+Queen Victoria Hospital|Royal Surrey County Hospital|54
+Queen Victoria Hospital|Frimley Park Hospital|65
+Queen Victoria Hospital|St Peter's Hospital|50
+Queen Victoria Hospital|Darent Valley Hospital|47
+Queen Victoria Hospital|Medway Maritime Hospital|66
+Queen Victoria Hospital|Maidstone Hospital|51
+Queen Victoria Hospital|Tunbridge Wells Hospital|30
+Queen Victoria Hospital|William Harvey Hospital|71
+Queen Victoria Hospital|Kent & Canterbury Hospital|83
+Queen Victoria Hospital|QEQM Hospital|101
+Queen Victoria Hospital|Eastbourne District General Hospital|54
+Queen Victoria Hospital|Conquest Hospital|65
+Queen Victoria Hospital|Worthing Hospital|57
+Queen Victoria Hospital|St Richard's Hospital|78
+Queen Victoria Hospital|Princess Royal Hospital|28
+Queen Victoria Hospital|Royal Sussex County Hospital|58
+Queen Victoria Hospital|Queen Victoria Hospital|0
+Queen Victoria Hospital|St George's Hospital|66
+Queen Victoria Hospital|St Thomas' Hospital|93
+Queen Victoria Hospital|King's College Hospital|78
+Queen Victoria Hospital|UCLH|99
+St George's Hospital|Crawley Hospital|57
+St George's Hospital|East Surrey Hospital|52
+St George's Hospital|Royal Surrey County Hospital|43
+St George's Hospital|Frimley Park Hospital|56
+St George's Hospital|St Peter's Hospital|41
+St George's Hospital|Darent Valley Hospital|67
+St George's Hospital|Medway Maritime Hospital|87
+St George's Hospital|Maidstone Hospital|72
+St George's Hospital|Tunbridge Wells Hospital|67
+St George's Hospital|William Harvey Hospital|92
+St George's Hospital|Kent & Canterbury Hospital|104
+St George's Hospital|QEQM Hospital|123
+St George's Hospital|Eastbourne District General Hospital|102
+St George's Hospital|Conquest Hospital|106
+St George's Hospital|Worthing Hospital|87
+St George's Hospital|St Richard's Hospital|97
+St George's Hospital|Princess Royal Hospital|73
+St George's Hospital|Royal Sussex County Hospital|89
+St George's Hospital|Queen Victoria Hospital|66
+St George's Hospital|St George's Hospital|0
+St George's Hospital|St Thomas' Hospital|35
+St George's Hospital|King's College Hospital|30
+St George's Hospital|UCLH|50
+St Thomas' Hospital|Crawley Hospital|87
+St Thomas' Hospital|East Surrey Hospital|80
+St Thomas' Hospital|Royal Surrey County Hospital|67
+St Thomas' Hospital|Frimley Park Hospital|71
+St Thomas' Hospital|St Peter's Hospital|60
+St Thomas' Hospital|Darent Valley Hospital|52
+St Thomas' Hospital|Medway Maritime Hospital|71
+St Thomas' Hospital|Maidstone Hospital|71
+St Thomas' Hospital|Tunbridge Wells Hospital|72
+St Thomas' Hospital|William Harvey Hospital|91
+St Thomas' Hospital|Kent & Canterbury Hospital|95
+St Thomas' Hospital|QEQM Hospital|113
+St Thomas' Hospital|Eastbourne District General Hospital|124
+St Thomas' Hospital|Conquest Hospital|111
+St Thomas' Hospital|Worthing Hospital|118
+St Thomas' Hospital|St Richard's Hospital|121
+St Thomas' Hospital|Princess Royal Hospital|103
+St Thomas' Hospital|Royal Sussex County Hospital|119
+St Thomas' Hospital|Queen Victoria Hospital|93
+St Thomas' Hospital|St George's Hospital|35
+St Thomas' Hospital|St Thomas' Hospital|0
+St Thomas' Hospital|King's College Hospital|18
+St Thomas' Hospital|UCLH|17
+King's College Hospital|Crawley Hospital|72
+King's College Hospital|East Surrey Hospital|70
+King's College Hospital|Royal Surrey County Hospital|68
+King's College Hospital|Frimley Park Hospital|81
+King's College Hospital|St Peter's Hospital|66
+King's College Hospital|Darent Valley Hospital|48
+King's College Hospital|Medway Maritime Hospital|67
+King's College Hospital|Maidstone Hospital|66
+King's College Hospital|Tunbridge Wells Hospital|68
+King's College Hospital|William Harvey Hospital|86
+King's College Hospital|Kent & Canterbury Hospital|90
+King's College Hospital|QEQM Hospital|109
+King's College Hospital|Eastbourne District General Hospital|118
+King's College Hospital|Conquest Hospital|107
+King's College Hospital|Worthing Hospital|103
+King's College Hospital|St Richard's Hospital|122
+King's College Hospital|Princess Royal Hospital|88
+King's College Hospital|Royal Sussex County Hospital|104
+King's College Hospital|Queen Victoria Hospital|78
+King's College Hospital|St George's Hospital|30
+King's College Hospital|St Thomas' Hospital|18
+King's College Hospital|King's College Hospital|0
+King's College Hospital|UCLH|35
+UCLH|Crawley Hospital|94
+UCLH|East Surrey Hospital|91
+UCLH|Royal Surrey County Hospital|77
+UCLH|Frimley Park Hospital|74
+UCLH|St Peter's Hospital|63
+UCLH|Darent Valley Hospital|61
+UCLH|Medway Maritime Hospital|80
+UCLH|Maidstone Hospital|80
+UCLH|Tunbridge Wells Hospital|81
+UCLH|William Harvey Hospital|99
+UCLH|Kent & Canterbury Hospital|103
+UCLH|QEQM Hospital|121
+UCLH|Eastbourne District General Hospital|133
+UCLH|Conquest Hospital|119
+UCLH|Worthing Hospital|125
+UCLH|St Richard's Hospital|131
+UCLH|Princess Royal Hospital|110
+UCLH|Royal Sussex County Hospital|126
+UCLH|Queen Victoria Hospital|99
+UCLH|St George's Hospital|50
+UCLH|St Thomas' Hospital|17
+UCLH|King's College Hospital|35
+UCLH|UCLH|0
+`;
+
+/* =========================
+   BUILD LOOKUPS
+   ========================= */
+const transferTimes = {};
+const hospitals = new Set();
+
+rawTransfers.trim().split("\n").forEach(line => {
+  const [from, to, min] = line.split("|").map(x => x.trim());
+  hospitals.add(from);
+  hospitals.add(to);
+  transferTimes[`${from}|${to}`] = Number(min);
+});
+
+/* =========================
+   POPULATE SEARCH LISTS
+   ========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  const startingList = document.getElementById("startingLocationList");
+  const referringList = document.getElementById("referringList");
+  const receivingList = document.getElementById("receivingList");
+
+  const startingOptions = ["West Base – Crawley", "East Base – Maidstone", ...[...hospitals].sort()];
+  startingOptions.forEach(v => startingList.appendChild(new Option(v)));
+
+  [...hospitals].sort().forEach(h => {
+    referringList.appendChild(new Option(h));
+    receivingList.appendChild(new Option(h));
+  });
+
+  document.getElementById("teamInput").value = "West";
+  document.getElementById("startingLocationInput").value = "West Base – Crawley";
+});
+
+/* =========================
+   HELPERS
+   ========================= */
+function minutesToHHMM(totalMinutes) {
+  const total = Math.round(totalMinutes);
+  const hh = Math.floor(total / 60);
+  const mm = String(total % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function formatHHMM(dateObj) {
+  const hh = String(dateObj.getHours()).padStart(2, "0");
+  const mm = String(dateObj.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function addMinutesToNowUK(totalMinutes) {
+  const now = new Date();
+  return new Date(now.getTime() + Math.round(totalMinutes) * 60000);
+}
+
+/* =========================
+   HEMS ALERT (time critical only)
+   ========================= */
+function updateHemsAlert(referring, receiving) {
+  const alertBox = document.getElementById("hemsAlert");
+
+  const referringSet = new Set([
+    "Tunbridge Wells Hospital",
+    "QEQM Hospital",
+    "William Harvey Hospital",
+    "Eastbourne District General Hospital",
+    "Maidstone Hospital",
+    "Royal Sussex County Hospital",
+    "Darent Valley Hospital",
+    "Frimley Park Hospital"
+  ]);
+
+  const receivingSet = new Set([
+    "King's College Hospital",
+    "St George's Hospital",
+    "Royal Sussex County Hospital"
+  ]);
+
+  const show = referringSet.has(referring) && receivingSet.has(receiving);
+
+  if (show) {
+    alertBox.style.display = "block";
+    alertBox.textContent =
+      "If this transfer is time critical, particularly from ED, consider contacting AAKSS HEMS via their desk for an aeromedical transfer on 03001235811 or 01634471999";
+  } else {
+    alertBox.style.display = "none";
+    alertBox.textContent = "";
+  }
+}
+
+/* =========================
+   CALCULATION
+   ========================= */
+function calculate() {
+  const isTimeCritical = document.getElementById("timeCriticalCheck").checked;
+
+  const teamRaw = (document.getElementById("teamInput").value || "").trim().toLowerCase();
+  const team = teamRaw === "east" ? "east" : "west";
+
+  const startInput = (document.getElementById("startingLocationInput").value || "").trim();
+  const referring = (document.getElementById("referringInput").value || "").trim();
+  const receiving = (document.getElementById("receivingInput").value || "").trim();
+
+  if (!referring || !receiving || !startInput) {
+    return showError("Please select Starting Location, Referring Hospital, and Receiving Hospital.");
+  }
+
+  let startHospital = startInput;
+  if (startInput === "West Base – Crawley") startHospital = "Crawley Hospital";
+  if (startInput === "East Base – Maidstone") startHospital = "Maidstone Hospital";
+
+  const toRef = transferTimes[`${startHospital}|${referring}`];
+  const refToRec = transferTimes[`${referring}|${receiving}`];
+
+  if (toRef == null) return showError(`No time found for "${startHospital}" → "${referring}"`);
+  if (refToRec == null) return showError(`No time found for "${referring}" → "${receiving}"`);
+
+  const baseHospital = (team === "west") ? "Crawley Hospital" : "Maidstone Hospital";
+  const backToBaseRaw = transferTimes[`${receiving}|${baseHospital}`];
+  if (backToBaseRaw == null) return showError(`No time found for "${receiving}" → "${baseHospital}"`);
+
+  let displayTimeToReceiving, displayTotalJobCycle, etaRefMinutes;
+
+  if (isTimeCritical) {
+    // Time Critical logic:
+    // - Blue light to referring (10% saving already baked into base times, per assumption text)
+    // - 30 min packaging
+    // - Blue light to receiving
+    // - 1.2x multiplier applied only to the return leg (receiving -> base)
+    // - 45 min handover at receiving
+    const timeToReceiving = toRef + 30 + refToRec;
+    const backToBase_tc = backToBaseRaw * 1.2;
+    const totalJobCycle_tc = timeToReceiving + 45 + backToBase_tc;
+
+    displayTimeToReceiving = timeToReceiving;
+    displayTotalJobCycle = totalJobCycle_tc;
+    etaRefMinutes = toRef;
+  } else {
+    // Non-Time Critical logic:
+    // Multiply ALL displayed calculated results by 1.2 (routine driving)
+    const timeToReceiving = toRef + 30 + refToRec;
+    const backToBase_ntc = backToBaseRaw * 1.2;
+    const totalJobCycle = timeToReceiving + 45 + backToBase_ntc;
+
+    displayTimeToReceiving = timeToReceiving * 1.2;
+    displayTotalJobCycle = totalJobCycle * 1.2;
+    etaRefMinutes = toRef * 1.2;
+  }
+
+  const etaReferring = addMinutesToNowUK(etaRefMinutes);
+  const etaReceiving = addMinutesToNowUK(displayTimeToReceiving);
+  const backOnBaseTime = addMinutesToNowUK(displayTotalJobCycle);
+
+  displayResults({
+    isTimeCritical,
+    timeToReceivingMinutes: displayTimeToReceiving,
+    totalJobCycleMinutes: displayTotalJobCycle,
+    etaReferringDate: etaReferring,
+    etaReceivingDate: etaReceiving,
+    backOnBaseDate: backOnBaseTime,
+    referring,
+    receiving
+  });
+}
+
+/* =========================
+   RESULT DISPLAY
+   ========================= */
+function displayResults(data) {
+  const {
+    isTimeCritical,
+    timeToReceivingMinutes,
+    totalJobCycleMinutes,
+    etaReferringDate,
+    etaReceivingDate,
+    backOnBaseDate,
+    referring,
+    receiving
+  } = data;
+
+  const result = document.getElementById("result");
+  const etaRefBox = document.getElementById("etaReferring");
+  const etaRecBox = document.getElementById("etaReceiving");
+  const assumptions = document.getElementById("assumptions");
+  const jobCycle = document.getElementById("jobCycleResult");
+  const handoverNote = document.getElementById("handoverNote");
+  const backOnBase = document.getElementById("backOnBaseResult");
+
+  etaRefBox.style.display = "block";
+  etaRefBox.textContent = `ETA at Referring hospital: ${formatHHMM(etaReferringDate)}`;
+
+  result.textContent = `Time to Receiving Hospital: ${minutesToHHMM(timeToReceivingMinutes)}`;
+
+  if (isTimeCritical) {
+    // Colour logic: < 3h green, 3–4h amber, >= 4h red
+    const total = Math.round(timeToReceivingMinutes);
+    result.style.color = "white";
+    if (total < 180) result.style.background = "green";
+    else if (total < 240) result.style.background = "#FFBF00";
+    else result.style.background = "red";
+  } else {
+    // Non-time critical: always blue
+    result.style.background = "#86C2BD";
+    result.style.color = "white";
+  }
+
+  etaRecBox.style.display = "block";
+  etaRecBox.textContent = `ETA at Receiving Hospital: ${formatHHMM(etaReceivingDate)}`;
+
+  assumptions.style.display = "block";
+  if (isTimeCritical) {
+    assumptions.textContent =
+      "This calculation assumes blue light driving to the referring hospital (10% time saving), 30 minutes packaging time, and then blue light driving to the receiving hospital, and is designed to assist with decision making for time critical transfers only";
+  } else {
+    assumptions.textContent =
+      "This calculation assumes routine driving for all legs of journey and provides an estimated time to receiving hospital";
+  }
+
+  jobCycle.style.display = "block";
+  jobCycle.textContent = `Total Estimated Job Cycle: ${minutesToHHMM(totalJobCycleMinutes)}`;
+
+  handoverNote.style.display = "block";
+  handoverNote.textContent = "Allows 45 minutes handover at receiving hospital";
+
+  backOnBase.style.display = "block";
+  backOnBase.textContent = `Estimated time back on base: ${formatHHMM(backOnBaseDate)}`;
+  backOnBase.style.color = "white";
+
+  const minutesOfDay = backOnBaseDate.getHours() * 60 + backOnBaseDate.getMinutes();
+  const t2030 = 20 * 60 + 30;
+  const t2130 = 21 * 60 + 30;
+
+  if (minutesOfDay < t2030) backOnBase.style.background = "green";
+  else if (minutesOfDay <= t2130) backOnBase.style.background = "#FFBF00";
+  else backOnBase.style.background = "red";
+
+  // HEMS alert only for time critical
+  if (isTimeCritical) {
+    updateHemsAlert(referring, receiving);
+  } else {
+    const alertBox = document.getElementById("hemsAlert");
+    alertBox.style.display = "none";
+    alertBox.textContent = "";
+  }
+}
+
+/* =========================
+   ERROR DISPLAY
+   ========================= */
+function showError(message) {
+  const result = document.getElementById("result");
+  const etaRefBox = document.getElementById("etaReferring");
+  const etaRecBox = document.getElementById("etaReceiving");
+  const assumptions = document.getElementById("assumptions");
+  const jobCycle = document.getElementById("jobCycleResult");
+  const handoverNote = document.getElementById("handoverNote");
+  const backOnBase = document.getElementById("backOnBaseResult");
+  const alertBox = document.getElementById("hemsAlert");
+
+  result.textContent = message;
+  result.style.background = "red";
+  result.style.color = "white";
+
+  etaRefBox.style.display = "none";
+  etaRefBox.textContent = "";
+  etaRecBox.style.display = "none";
+  etaRecBox.textContent = "";
+  assumptions.style.display = "none";
+  assumptions.textContent = "";
+  jobCycle.style.display = "none";
+  jobCycle.textContent = "";
+  handoverNote.style.display = "none";
+  handoverNote.textContent = "";
+  backOnBase.style.display = "none";
+  backOnBase.textContent = "";
+  alertBox.style.display = "none";
+  alertBox.textContent = "";
+}
+</script>
+
+</body>
+</html>
